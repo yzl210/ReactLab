@@ -1,8 +1,13 @@
-import {MouseEventHandler, useState} from 'react';
+import React, {MouseEventHandler, useState} from 'react';
 
-function Square({value, onSquareClick}: { value: string, onSquareClick: MouseEventHandler<HTMLButtonElement> }) {
+function Square({value, isWinning, onSquareClick}: {
+    value: string,
+    isWinning: boolean,
+    onSquareClick: MouseEventHandler<HTMLButtonElement>
+}) {
+    const color = isWinning ? 'red' : 'black';
     return (
-        <button className="square" onClick={onSquareClick}>
+        <button className="square" style={{color: color}} onClick={onSquareClick}>
             {value}
         </button>
     );
@@ -14,7 +19,7 @@ function Board({xIsNext, squares, onPlay}: {
     onPlay: (squares: string[]) => void
 }) {
     function handleClick(i: number) {
-        if (calculateWinner(squares) || squares[i]) {
+        if (calculateWinner(squares)[0] || squares[i]) {
             return;
         }
         const nextSquares = squares.slice();
@@ -26,32 +31,34 @@ function Board({xIsNext, squares, onPlay}: {
         onPlay(nextSquares);
     }
 
-    const winner = calculateWinner(squares);
+
+    const [winner, winningSquares]: [null | string, null | number[]] = calculateWinner(squares);
     let status;
-    if (winner) {
-        status = 'Winner: ' + winner;
-    } else {
+    if (winner)
+        status = 'Winner: ' + winner[0];
+    else if (squares.every((value) => value !== null))
+        status = 'Draw';
+    else
         status = 'Next player: ' + (xIsNext ? 'X' : 'O');
+
+
+    let row: React.JSX.Element[] = [];
+
+    for (let i = 0; i < 3; i++) {
+        let square: React.JSX.Element[] = [];
+        for (let j = 0; j < 3; j++) {
+            let index = i * 3 + j;
+            square.push(<Square value={squares[index]}
+                                isWinning={winningSquares ? winningSquares.includes(index) : false}
+                                onSquareClick={() => handleClick(index)}/>);
+        }
+        row.push(<div className="board-row">{square}</div>);
     }
 
     return (
         <>
             <div className="status">{status}</div>
-            <div className="board-row">
-                <Square value={squares[0]} onSquareClick={() => handleClick(0)}/>
-                <Square value={squares[1]} onSquareClick={() => handleClick(1)}/>
-                <Square value={squares[2]} onSquareClick={() => handleClick(2)}/>
-            </div>
-            <div className="board-row">
-                <Square value={squares[3]} onSquareClick={() => handleClick(3)}/>
-                <Square value={squares[4]} onSquareClick={() => handleClick(4)}/>
-                <Square value={squares[5]} onSquareClick={() => handleClick(5)}/>
-            </div>
-            <div className="board-row">
-                <Square value={squares[6]} onSquareClick={() => handleClick(6)}/>
-                <Square value={squares[7]} onSquareClick={() => handleClick(7)}/>
-                <Square value={squares[8]} onSquareClick={() => handleClick(8)}/>
-            </div>
+            {row}
         </>
     );
 }
@@ -75,9 +82,15 @@ export default function Game() {
     const moves = history.map((_squares, move) => {
         let description;
         if (move > 0) {
-            description = 'Go to move #' + move;
+            if (move === currentMove)
+                description = 'You are at move #' + move;
+            else
+                description = 'Go to move #' + move;
         } else {
-            description = 'Go to game start';
+            if (move === currentMove)
+                description = 'You are at game start';
+            else
+                description = 'Go to game start';
         }
         return (
             <li key={move}>
@@ -98,7 +111,7 @@ export default function Game() {
     );
 }
 
-function calculateWinner(squares: string[]) {
+function calculateWinner(squares: string[]): [null | string, null | number[]] {
     const lines = [
         [0, 1, 2],
         [3, 4, 5],
@@ -112,8 +125,8 @@ function calculateWinner(squares: string[]) {
     for (let i = 0; i < lines.length; i++) {
         const [a, b, c] = lines[i];
         if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-            return squares[a];
+            return [squares[a], [a, b, c]];
         }
     }
-    return null;
+    return [null, null];
 }
